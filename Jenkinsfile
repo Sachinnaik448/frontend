@@ -2,8 +2,7 @@ pipeline {
     agent any
 
     environment {
-        AWS_ACCESS_KEY_ID     = 'AKIAVRUVQR3HFAXLQDRZ'      // 🔑 Replace with your Access Key
-        AWS_SECRET_ACCESS_KEY = '4XBkwkP915itnmvR99HdMtCUq4E/lpycgUx+OLHt'      // 🔑 Replace with your Secret Key
+       
         AWS_DEFAULT_REGION    = 'us-east-1'
         S3_BUCKET             = 'amzn-github'       // ✅ Replace with actual bucket
         CLOUDFRONT_ID         = 'E2N8V6NKVIOBWW'           // ✅ Replace with your CloudFront distribution ID
