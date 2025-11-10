@@ -1,60 +1,45 @@
 pipeline {
-    agent any
-
-    environment {
-       
-        AWS_DEFAULT_REGION    = 'us-east-1'
-        S3_BUCKET             = 'amzn-github'       // ✅ Replace with actual bucket
-        CLOUDFRONT_ID         = 'E2N8V6NKVIOBWW'           // ✅ Replace with your CloudFront distribution ID
+  agent any
+  environment {
+    S3_BUCKET = 'amzn-github'
+    CF_DIST_ID = 'E2N8V6NKVIOBWW''   // optional
+  }
+  stages {
+    stage('Checkout') {
+      steps { checkout scm }
     }
-
-    stages {
-        stage('Checkout Code') {
-            steps {
-                git branch: 'main',
-                    url: 'https://github.com/siva941/aws-s3-static-website-sample.git'
-            }
-        }
-
-        stage('Install Dependencies') {
-            steps {
-                sh 'npm ci'  // Faster & safer than npm install
-            }
-        }
-
-        stage('Build Frontend') {
-            steps {
-                sh 'npm run build'
-            }
-        }
-
-        stage('Deploy to S3') {
-            steps {
-                sh '''
-                    echo "Syncing build directory to S3..."
-                    aws s3 sync build/ s3://$S3_BUCKET --delete --exact-timestamps
-                '''
-            }
-        }
-
-        stage('Invalidate CloudFront Cache') {
-            steps {
-                sh '''
-                    echo "Invalidating CloudFront cache..."
-                    aws cloudfront create-invalidation \
-                        --distribution-id $CLOUDFRONT_ID \
-                        --paths "/*"
-                '''
-            }
-        }
+    stage('Install & Build') {
+      steps {
+        sh 'npm ci'                 // change to your build setup
+        sh 'npm run build'          // outputs to build/ (change if needed)
+      }
     }
-
-    post {
-        success {
-            echo "✅ Deployment successful!"
+    stage('Upload to S3') {
+      steps {
+        withCredentials([[
+          $class: 'AmazonWebServicesCredentialsBinding',
+          credentialsId: 'aws-creds'
+        ]]) {
+          sh """
+            aws s3 sync build/ s3://$S3_BUCKET/ --delete
+          """
         }
-        failure {
-            echo "❌ Deployment failed. Check logs."
-        }
+      }
     }
+    stage('Invalidate CloudFront') {
+      when { expression { env.CF_DIST_ID != null && env.CF_DIST_ID != '' } }
+      steps {
+        withCredentials([[
+          $class: 'AmazonWebServicesCredentialsBinding',
+          credentialsId: 'aws-creds'
+        ]]) {
+          sh "aws cloudfront create-invalidation --distribution-id $CF_DIST_ID --paths '/*'"
+        }
+      }
+    }
+  }
+  post {
+    success { echo 'Static site deployed to S3 ✅' }
+    failure { echo 'Build or deploy failed ❌' }
+  }
 }
