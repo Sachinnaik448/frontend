@@ -13,6 +13,7 @@ pipeline {
 
     stage('Workspace debug') {
       steps {
+        // small, POSIX-compatible debug step (no pipefail needed)
         sh '''
           echo "===== WORKSPACE ====="
           pwd
@@ -26,10 +27,15 @@ pipeline {
 
     stage('Preflight checks') {
       steps {
-        sh '''
-          set -euo pipefail
+        // use bash so we can use -o pipefail safely
+        sh '''#!/bin/bash -euo pipefail
           if ! command -v aws >/dev/null 2>&1; then
             echo "ERROR: aws CLI not installed on this agent"
+            exit 2
+          fi
+
+          if ! command -v git >/dev/null 2>&1; then
+            echo "ERROR: git not installed on this agent"
             exit 2
           fi
         '''
@@ -41,8 +47,7 @@ pipeline {
         withCredentials([
           usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')
         ]) {
-          sh '''
-            set -euo pipefail
+          sh '''#!/bin/bash -euo pipefail
             export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
             export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
             export AWS_DEFAULT_REGION=${AWS_REGION}
@@ -73,8 +78,7 @@ pipeline {
           usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY'),
           string(credentialsId: 'cloudfront-id', variable: 'CLOUDFRONT_DIST_ID')
         ]) {
-          sh '''
-            set -euo pipefail
+          sh '''#!/bin/bash -euo pipefail
             export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
             export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
             export AWS_DEFAULT_REGION=${AWS_REGION}
@@ -88,11 +92,7 @@ pipeline {
   }
 
   post {
-    success {
-      echo "🎉 Deployment succeeded: https://agentsachin.live"
-    }
-    failure {
-      echo "❌ Deployment failed - check console output"
-    }
+    success { echo "🎉 Deployment succeeded: https://agentsachin.live" }
+    failure { echo "❌ Deployment failed - check console output" }
   }
 }
