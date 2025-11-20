@@ -26,7 +26,7 @@ pipeline {
             steps {
                 withAWS(credentials: 'aws-creds', region: 'us-east-1') {
                     sh 'aws s3 sync build/ s3://$S3_BUCKET --delete'
-                    sh 'aws cloudfront create-invalidation --distribution-id E3DQ4C4JEV7KNU --paths "/*"'
+                    sh 'aws cloudfront create-invalidation --cloudfront-id E3DQ4C4JEV7KNU --paths "/*"'
                 }
             }
         }
